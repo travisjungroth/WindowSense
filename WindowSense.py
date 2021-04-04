@@ -1,3 +1,8 @@
+# These comments are brittle because they're decoupled from the code.
+# If you start using json for something else, then this comment is inaccurate.
+# I'll also say I learned nothing from them. They're either common packages or there's no extra info.
+# "Enables all the SenseHAT functions" doesn't tell me much about SenseHat.
+# I suggest deleting them all, and anyone curious can always look on PyPI.
 import json  # Writing JSON files for thermostat traits output
 import requests  # For HTTP-based API calls
 import schedule  # Creates and manages a job to keep the WS updating
@@ -18,6 +23,7 @@ class WindowSense:
     temperature forecasts, and draw a dynamic graph on the LED matrix.
     Also provides a way to safely shut down the Pi."""
     # Stores the next 8 hours of OWM forecast temps
+    # Probably better as a list. Any time you have a dict of 0-n that's a hint it's an array.
     forecast_temps = {
         0: 0.0,
         1: 0.0,
@@ -29,6 +35,8 @@ class WindowSense:
         7: 0.0
         }
     # Settings for the SenseHAT LEDs for brightness, text, colors, etc.
+    # I don't think these change, so make them constants in a settings.py file. Then you can do settings.ROTATION.
+    # It's like stuff in your dotenv but more universal.
     led_settings = {
         'dim_state': True,
         'rotation': 270,
@@ -46,6 +54,7 @@ class WindowSense:
         'off': (0, 0, 0)  # Turns pixel(s) off
         }
     # Defines the colors to be used for each row of the forecast graph
+    # Check out IntEnum
     graph_colors = {
         0: 'red',
         1: 'orange',
@@ -57,6 +66,8 @@ class WindowSense:
         7: 'blue'
         }
     # Settings for heat/cool setpoints & display colors
+    # These nested dictionaries are hints that these are classes. Like a class with value, text and color attributes.
+    # Maybe a dataclass.
     thermostat_traits = {
         'heat_setpoint': {
             'value': 65,  # Nest returns int; default if no Nest setting
@@ -79,6 +90,7 @@ class WindowSense:
             'color': led_settings['cyan']
             },
         }
+    # Also settings
     program_settings = {
         'off message': {
             'text': 'Off?',
@@ -90,11 +102,15 @@ class WindowSense:
             }
         }
 
+    # No need to be a static method. I rarely use those, only if it's something that should be obviously namespaced.
+    # Just a straight function is fine.
     @staticmethod
     def c_to_f(temp_c):
         temp_f = (temp_c * 9/5) + 32
         return temp_f
 
+    # Thermostat seems like it's own class or function.
+    # Maybe a class with all these tokens that just gets a response di
     def get_thermostat(self):
         """Assembles a Google SDM API call using authentication details
         obtained via the Google Device Access & Cloud Platform consoles.
@@ -151,6 +167,7 @@ class WindowSense:
         print('Heat setpoint:', self.thermostat_traits['heat_setpoint']['value'])
         #print('Cool setpoint:', self.thermostat_traits['cool_setpoint']['value'])
 
+    # Also it's own thing. There's probably actually an API wrapper already out there for these.
     def get_forecast(self):
         """Assembles an OpenWeatherMap API call using pyowm, gets the
          forecast temperature for the next eight hours."""
@@ -180,6 +197,8 @@ class WindowSense:
                 dict_writer.writeheader()
             dict_writer.writerow(row_dict)
 
+    # This looks like it's mostly mutating sense. sense should be an attribute on some class rather
+    # than just grabbed from the local variables.
     def draw_graph(self):
         """Creates a stylized graph on the SenseHat RGB LED matrix that
         shows if the forecast temperature for the next eight hours will
@@ -205,6 +224,7 @@ class WindowSense:
                                scroll_speed=leds['scroll_speed'],
                                text_colour=leds['green'],
                                back_colour=leds['off'])
+        # Yeah, this should definitely be a list instead!
         for key in sorted(self.forecast_temps):
             forecast_temp = self.forecast_temps[key]
             if forecast_temp > midpoint:
@@ -242,6 +262,8 @@ class WindowSense:
 
     def show_ambient(self):
         """Displays the Nest thermostat ambient temperature & humidity."""
+        # No real need to localize these attributes as variables. It makes it hard to find the usage of
+        # the attribute. Of course, sometimes you need it as a local variable but that's different.
         leds = self.led_settings
         therm = self.thermostat_traits
         temp_message = f"{therm['temperature']['text']} {therm['temperature']['value']}"
@@ -259,6 +281,8 @@ class WindowSense:
     def toggle_brightness(self):
         """Toggles the SenseHAT between high/low brightness settings."""
         leds = self.led_settings
+        # This is the only mutation of leds that I saw. So maybe it shouldn't be a key, and just
+        # store the state on sense. Then have something like DEFAULT_DIM_STATE.
         leds['dim_state'] = not leds['dim_state']
         sense.low_light = leds['dim_state']
 
@@ -300,6 +324,8 @@ def joystick():
     """While the main thread runs, this event thread checks the SenseHat
     joystick and calls a function based on the input direction."""
     while True:
+        # I imagine there's a better way to do this that wouldn't be thread blocking. I don't know what it is.
+        # I'd look for how other people do it with SenseHat.
         sleep(0.25)
         stick = sense.stick.get_events()
         if stick:
